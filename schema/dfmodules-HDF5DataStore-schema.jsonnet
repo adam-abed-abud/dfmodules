@@ -30,7 +30,7 @@ local types = {
                 doc="Prefix for the run number part of the filename"),
         s.field("digits_for_run_number", self.count, 6,
                 doc="Number of digits to use for the run number when formatting the filename"),
-        s.field("file_index_prefix", self.fnprefix, "",
+        s.field("file_index_prefix", self.fnprefix, "file", // was "" but there'
                 doc="Prefix for the file index part of the filename"),
         s.field("digits_for_file_index", self.count, 4,
                 doc="Number of digits to use for the file index when formatting the filename"),
