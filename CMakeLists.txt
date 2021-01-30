@@ -10,16 +10,24 @@ find_package(appfwk REQUIRED)
 find_package(HighFive REQUIRED)
 find_package(dfmessages REQUIRED)
 
+# AAA: adding boost log library
+FIND_PACKAGE(Boost EXACT COMPONENTS log)
+INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIR})
+MESSAGE(STATUS "Boost libs: ${Boost_INCLUDE_DIR}")
+ADD_DEFINITIONS(-DBOOST_LOG_DYN_LINK)
+
+
 ##############################################################################
-daq_add_library( StorageKey.cpp TriggerDecisionForwarder TriggerInhibitAgent
+daq_add_library( SNBHandler.cpp AsyncIO.cpp StorageKey.cpp TriggerDecisionForwarder TriggerInhibitAgent 
                  LINK_LIBRARIES 
-                 ers::ers HighFive appfwk::appfwk stdc++fs dfmessages::dfmessages )
+                 ers::ers HighFive appfwk::appfwk stdc++fs dfmessages::dfmessages aio Boost::log)
 
 daq_add_plugin( HDF5DataStore      duneDataStore SCHEMA LINK_LIBRARIES HighFive appfwk::appfwk stdc++fs)
 
 daq_add_plugin( DataGenerator      duneDAQModule SCHEMA LINK_LIBRARIES dfmodules )
 daq_add_plugin( DataTransferModule duneDAQModule SCHEMA LINK_LIBRARIES dfmodules stdc++fs )
 daq_add_plugin( DataWriter         duneDAQModule SCHEMA LINK_LIBRARIES dfmodules )
+daq_add_plugin( SNBWriter         duneDAQModule SCHEMA LINK_LIBRARIES dfmodules )
 daq_add_plugin( FakeDataProd       duneDAQModule SCHEMA LINK_LIBRARIES dfmodules )
 daq_add_plugin( FragmentReceiver   duneDAQModule SCHEMA LINK_LIBRARIES dfmodules )
 ##daq_add_plugin( FakeFragRec        duneDAQModule LINK_LIBRARIES dfmodules )

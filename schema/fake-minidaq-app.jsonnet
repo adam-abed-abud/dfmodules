@@ -52,7 +52,7 @@ local qspec_list = [
                   [cmd.qinfo("data_fragment_"+idx+"_input_queue", qdict["data_fragments_"+idx].inst, "input")
                    for idx in std.range(1, NUMBER_OF_FAKE_DATA_PRODUCERS)
                   ]),
-              cmd.mspec("datawriter", "DataWriter", [
+              cmd.mspec("snbwriter", "SNBWriter", [
                   cmd.qinfo("trigger_record_input_queue", qdict.trigger_record_q.inst, "input"),
                   cmd.qinfo("trigger_decision_for_inhibit", qdict.trigdec_for_inhibit.inst, "input"),
                   cmd.qinfo("trigger_inhibit_output_queue", qdict.trigger_inhibit_q.inst, "output")])] +
@@ -64,7 +64,7 @@ local qspec_list = [
               { waitms: 1000 },
 
     cmd.conf([cmd.mcmd("ftde", ftde_ns.generate_config_params(1000)),
-              cmd.mcmd("datawriter",
+              cmd.mcmd("snbwriter",
                 {
                   "data_store_parameters": {
                     "name" : "data_store",
