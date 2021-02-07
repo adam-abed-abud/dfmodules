@@ -95,7 +95,9 @@ void AsyncIO::retrieveCompletions(){
 }
 
 int AsyncIO::_getOperations(size_t io_size){
-    auto preferred_block_size = 16384*5; // TODO: this should be retrieved from stat or device
+    // AAA: TODO: IMPORTANT: the preferred block size should be retrieved from stat or from device
+    //auto preferred_block_size = 16384*6400*4; 
+    size_t preferred_block_size = 16384*5*512;
     if(io_size <= preferred_block_size) return 1;
     return io_size / preferred_block_size;
 }

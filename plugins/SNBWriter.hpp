@@ -67,12 +67,15 @@ private:
   // AAA TODO: file_path_ , file_name_ and io_size 
   // should be taken from configuration file 
   char* m_membuffer = nullptr;
-  const int m_num_producers = 10;
-  const size_t m_io_size = 2*1048576; // 1 MB
-  const size_t m_alloc_size = 2*1048576; // 1 MB
+  // Block size 
+  const size_t m_io_size = 1024*1048576; // 1024 MB
+  // Allocation size 
+  const size_t m_alloc_size = 1024*1048576; // 1024 MB
   const std::string m_file_path = "/mnt/micron1/";
   const std::string m_file_name = "output_link";
-  
+  // Prepare SNB data store
+  SNBHandler* m_snb_data_store_1;
+       
 
   // Worker(s)
   std::unique_ptr<DataStore> data_writer_;

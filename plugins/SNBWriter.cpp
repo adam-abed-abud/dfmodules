@@ -102,7 +102,22 @@ SNBWriter::do_conf(const data_t& payload)
 
   // Reserve aligned memory for SNB data store to write. Setting size of buffer to 1 MB.
   AsyncIO::memalloc(reinterpret_cast<void**>(&m_membuffer), PAGE_SIZE, m_alloc_size);
+  //m_membuffer = (char*)aligned_alloc(PAGE_SIZE, m_alloc_size);
+  //m_membuffer = (char*)malloc(m_alloc_size);
   //memset(m_membuffer, 'X', m_io_size);
+  
+  // Create SNB data store initialize
+ if(getenv("SECONDARY_APP")) {
+     ERS_LOG("SECONDARY");
+     m_snb_data_store_1 = new SNBHandler(m_file_path + m_file_name + "_2.bin", m_io_size, false) ;
+ }
+ else {
+      ERS_LOG("PRIMARY");
+      m_snb_data_store_1 = new SNBHandler(m_file_path + m_file_name + "_1.bin", m_io_size, false) ;
+ }
+
+  m_snb_data_store_1->init();
+
 
   TLOG(TLVL_ENTER_EXIT_METHODS) << get_name() << ": Exiting do_conf() method";
 }
@@ -111,7 +126,7 @@ void
 SNBWriter::do_start(const data_t& /*args*/)
 {
   TLOG(TLVL_ENTER_EXIT_METHODS) << get_name() << ": Entering do_start() method";
-  //trigger_inhibit_agent_->start_checking();
+  trigger_inhibit_agent_->start_checking();
   thread_.start_working_thread();
   ERS_LOG(get_name() << " successfully started");
   TLOG(TLVL_ENTER_EXIT_METHODS) << get_name() << ": Exiting do_start() method";
@@ -145,22 +160,16 @@ SNBWriter::do_work(std::atomic<bool>& running_flag)
 {
   TLOG(TLVL_ENTER_EXIT_METHODS) << get_name() << ": Entering do_work() method";
   int32_t received_count = 0;
+  int64_t received_count_B = 0;
 
-
-  // Prepare SNB data store
-  std::vector<SNBHandler*> snb_handlers;
-  for (int i=0; i < m_num_producers; i++) {
-    // AAA: TODO path is hardcoded, add it to configuration file
-    snb_handlers.push_back(new SNBHandler(m_file_path + m_file_name + std::to_string(i) + ".bin", m_io_size, false));
-
-    // Initialize the store
-    snb_handlers[i]->init();
+  int coreID = 9;
+  if(getenv("SECONDARY_APP")) {
+    coreID = 15;
   }
-  std::future<void> executing_thread; 
+  auto t0 = std::chrono::high_resolution_clock::now();
   while (running_flag.load()) {
 
     std::unique_ptr<dataformats::TriggerRecord> trigRecPtr;
-
     // receive the next TriggerRecord
     try {
       triggerRecordInputQueue_->pop(trigRecPtr, queueTimeout_);
@@ -173,42 +182,59 @@ SNBWriter::do_work(std::atomic<bool>& running_flag)
       continue;
     }
 
-
     // First store the trigger record header
+    // AAA: temporarily commenting out the TriggerRecordHeader for the SNB application
     /*
     void* trh_ptr = trigRecPtr->get_header().get_storage_location();
     size_t trh_size = trigRecPtr->get_header().get_total_size_bytes(); 
     memcpy(membuffer_,(char*)trh_ptr, trh_size);
     snb_data_store.store(membuffer_, false, 2 );
-    //executing_thread = std::async(std::launch::async, &SNBHandler::store, &snb_data_store, fd, m_membuffer, false, 2);
-    //executing_thread.get();
     */
+
 
     // Write the fragments
     const auto& frag_vec = trigRecPtr->get_fragments();
     for (const auto& frag_ptr : frag_vec) {
       void* data_block = frag_ptr->get_storage_location();
       size_t data_block_size = frag_ptr->get_size();
-      //std::cout << data_block_size << "\n";  
-      //memcpy(m_membuffer, (char*)data_block, data_block_size);
-      snb_handlers[0]->store(m_membuffer, false, 2 );
-      //for (int thread = 0; thread < m_num_producers; thread++) {
-      //  std::async(std::launch::async, &SNBHandler::store, snb_handlers[thread], m_membuffer, false, thread);  
+      
+      received_count_B += frag_ptr->get_size(); 
+      // Checking that the memory buffer is aligned
+      //if (((uintptr_t)aligned % 4096) == 0){
+      //  std::cout << "MEMBUFFER ALIGNED" << "\n";
       //}
+
+      memcpy(m_membuffer, (char*)data_block, data_block_size);
+
+
+      // Write to disk
+      // AAA: hardcoded affinity to physical core 9 because /dev/nvme1n1 is 
+      // located on that sub-NUMA cluster
+      // AAA: Note that the data_block_size in the store method is used only for 
+      // check of the validity of the operation
+      m_snb_data_store_1->store(m_membuffer, data_block_size,  false, coreID, false ); 
     }
-     
+        
     // progress updates    
-    if ((received_count % 500) == 0) {
+    if ((received_count % 50) == 0) {
+      auto now = std::chrono::high_resolution_clock::now();
+      double seconds =  std::chrono::duration_cast<std::chrono::microseconds>(now-t0).count()/1000000.;
+      double throughput = received_count_B / (1000000. * seconds);
       std::ostringstream oss_prog;
-      oss_prog << ": Processing trigger number " << trigRecPtr->get_header().get_trigger_number() << ", this is one of "
-               << received_count << " trigger records received so far.";
+      oss_prog << ": Processed " << received_count << " trigger records; throughput = " << throughput << " MB/s.";
+
       ers::log(ProgressUpdate(ERS_HERE, get_name(), oss_prog.str()));
+      received_count = 0;
+      received_count_B = 0;
+      t0 = now;
     }
     
 
     // tell the TriggerInhibitAgent the trigger_number of this TriggerRecord so that
     // it can check whether an Inhibit needs to be asserted or cleared.
-    //trigger_inhibit_agent_->set_latest_trigger_number(trigRecPtr->get_header().get_trigger_number());
+    trigger_inhibit_agent_->set_latest_trigger_number(trigRecPtr->get_header().get_trigger_number());
+
+
   }
 
   std::ostringstream oss_summ;

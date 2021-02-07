@@ -38,8 +38,9 @@ public:
 
    int getMaxSize();
    void init();
-   void store(char* membuffer, bool test_finished, int coreID);   
-   void getResults(std::shared_ptr<AsyncIO> asyncio, int elapsed_ms);
+   void store(char* membuffer, size_t alloc_size, bool test_finished, int coreID, bool isDebug);   
+   void validateOperation(const char* buffer, size_t alloc_size, bool debug_mode);
+   void getResults(std::shared_ptr<AsyncIO> asyncio);
    void close(char* membuffer);
 
 private:
@@ -49,7 +50,7 @@ private:
    char* m_buffer;
    size_t m_sent_ops = 0;
    size_t m_completed_ops = 0;
-   size_t file_offset = 0;
+   size_t m_file_offset = 0;
    std::unique_ptr<AsyncIO> m_asyncio;
    int m_fd;
 

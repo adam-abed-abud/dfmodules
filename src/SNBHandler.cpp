@@ -105,14 +105,18 @@ void SNBHandler::init() {
 
 
 // Store a given memory buffer
-void SNBHandler::store(char* membuffer, bool test_finished, int coreID) {
+void SNBHandler::store(char* membuffer, size_t alloc_size, bool test_finished, int coreID, bool isDebug) {
 
+  // Check validity of the opearation
+  //validateOperation(membuffer, alloc_size, isDebug);
+
+  // Pin the thread to the core
   SetAffinityThread(coreID);
 
 
   // Offset to write on disk
   // Sequential write
-  file_offset = MIN_OFFSET + (m_sent_ops * m_block_size) ;
+  m_file_offset = MIN_OFFSET + (m_sent_ops * m_block_size);
  
   
   // Perform operation (read or write)
@@ -122,11 +126,11 @@ void SNBHandler::store(char* membuffer, bool test_finished, int coreID) {
       return;
     } else {
       m_completed_ops++;
-      // std::cout << m_completed_ops << " completed ops. Buffer=" << membuffer[0] << " ;  file_offset=" << file_offset << std::endl;
+      // std::cout << m_completed_ops << " completed ops. Buffer=" << membuffer[0] << " ;  m_file_offset=" << m_file_offset << std::endl;
     }
   };
   
-  m_asyncio->write(m_fd, file_offset, membuffer, m_block_size, callback);
+  m_asyncio->write(m_fd, m_file_offset, membuffer, m_block_size, callback);
   m_sent_ops++;
   
   // retrieve completed operations
@@ -139,15 +143,38 @@ void SNBHandler::store(char* membuffer, bool test_finished, int coreID) {
   }   
 }
 
+// Method to check the validity of the read/write operation
+void SNBHandler::validateOperation(const char* buffer, size_t alloc_size, bool debug_mode) {
+  // AAA: TODO: remove debug_mode and add pre compiler command
+  // Use of ERS issues or throw issues 
+  
+  if (!debug_mode) {
+    return; // checking on every operation might slow things. Only do it in debug mode
+  } else {
+    if(((ulong) buffer) % m_block_size != 0){
+      std::cout << "AsyncIO: The buffer is not aligned with page size " << m_block_size << " bytes)";
+      throw;
+    }
+    if((alloc_size % m_block_size) != 0) {
+      std::cout << "AsyncIO: The io_size (" << alloc_size << ") must be a multiple of the page size (" << m_block_size << " ) bytes";
+      throw;
+    }
+    if((m_file_offset % m_block_size) != 0) {
+      std::cout << "AsyncIO: The offset (" << m_file_offset << ") must be a multiple of the page size (" << PAGE_SIZE << " ) bytes";
+      throw;
+    }
+  }
+}
 
 
 
-void SNBHandler::getResults( std::shared_ptr<AsyncIO> asyncio, int elapsed_ms ){
+void SNBHandler::getResults( std::shared_ptr<AsyncIO> asyncio){
 
   // First check if the requests have finished
   while(asyncio->getIncompleOps()!= 0) {
     asyncio->retrieveCompletions();
   }   
+  // AAA: TODO to be implememnted
  
 
 }
