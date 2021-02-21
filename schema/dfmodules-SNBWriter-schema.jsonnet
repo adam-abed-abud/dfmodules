@@ -9,7 +9,7 @@ local types = {
     dsparams: s.any("DataStoreParams", doc="Parameters that configure a data store"),
 
     conf: s.record("ConfParams", [
-        s.field("threshold_for_inhibit", self.count, "5",
+        s.field("threshold_for_inhibit", self.count, "25",
                 doc="Threshold (for number of triggers being processed) for generating a Trigger Inhibit"),
         s.field("data_store_parameters", self.dsparams,
                 doc="Parameters that configure the DataStore associated with this SNBWriter"),

@@ -108,7 +108,7 @@ RequestGenerator::do_start(const data_t& /*args*/)
 {
   TLOG(TLVL_ENTER_EXIT_METHODS) << get_name() << ": Entering do_start() method";
   trigger_decision_forwarder_->start_forwarding();
-  thread_.start_working_thread();
+  thread_.start_working_thread(get_name());
   ERS_LOG(get_name() << " successfully started");
   TLOG(TLVL_ENTER_EXIT_METHODS) << get_name() << ": Exiting do_start() method";
 }

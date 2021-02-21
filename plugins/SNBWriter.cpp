@@ -127,7 +127,7 @@ SNBWriter::do_start(const data_t& /*args*/)
 {
   TLOG(TLVL_ENTER_EXIT_METHODS) << get_name() << ": Entering do_start() method";
   trigger_inhibit_agent_->start_checking();
-  thread_.start_working_thread();
+  thread_.start_working_thread(get_name());
   ERS_LOG(get_name() << " successfully started");
   TLOG(TLVL_ENTER_EXIT_METHODS) << get_name() << ": Exiting do_start() method";
 }
@@ -198,13 +198,14 @@ SNBWriter::do_work(std::atomic<bool>& running_flag)
       void* data_block = frag_ptr->get_storage_location();
       size_t data_block_size = frag_ptr->get_size();
       
-      received_count_B += frag_ptr->get_size(); 
+      received_count_B += data_block_size; 
       // Checking that the memory buffer is aligned
       //if (((uintptr_t)aligned % 4096) == 0){
       //  std::cout << "MEMBUFFER ALIGNED" << "\n";
       //}
 
       memcpy(m_membuffer, (char*)data_block, data_block_size);
+      //std::copy((char*)data_block, (char*)data_block+data_block_size, m_membuffer); 
 
 
       // Write to disk
@@ -216,9 +217,9 @@ SNBWriter::do_work(std::atomic<bool>& running_flag)
     }
         
     // progress updates    
-    if ((received_count % 50) == 0) {
-      auto now = std::chrono::high_resolution_clock::now();
-      double seconds =  std::chrono::duration_cast<std::chrono::microseconds>(now-t0).count()/1000000.;
+    auto now = std::chrono::high_resolution_clock::now();
+    double seconds =  std::chrono::duration_cast<std::chrono::microseconds>(now-t0).count()/1000000.;
+    if (seconds > 5.) {
       double throughput = received_count_B / (1000000. * seconds);
       std::ostringstream oss_prog;
       oss_prog << ": Processed " << received_count << " trigger records; throughput = " << throughput << " MB/s.";

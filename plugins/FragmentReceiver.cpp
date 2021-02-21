@@ -119,7 +119,7 @@ void
 FragmentReceiver::do_start(const data_t& /*args*/)
 {
   TLOG(TLVL_ENTER_EXIT_METHODS) << get_name() << ": Entering do_start() method";
-  thread_.start_working_thread();
+  thread_.start_working_thread(get_name());
   ERS_LOG(get_name() << " successfully started");
   TLOG(TLVL_ENTER_EXIT_METHODS) << get_name() << ": Exiting do_start() method";
 }
@@ -211,8 +211,10 @@ FragmentReceiver::do_work(std::atomic<bool>& running_flag)
     // Check if some decisions are complete or timedout
     // and create dedicated record
     //--------------------------------------------------
-
-    if (book_updates) {
+    if (!book_updates) {
+      std::this_thread::sleep_for (std::chrono::milliseconds(1)); 
+    }
+    else {
 
       std::ostringstream message;
       TLOG(TLVL_BOOKKEEPING) << "Bookeeping status: " << trigger_decisions_.size() << " decisions and "
